@@ -344,6 +344,11 @@ def Edit_Interaction(
     outcomes: Optional[str] = None,
     add_materials_shared: Optional[Union[str, List[str]]] = None,
     add_samples_distributed: Optional[Union[str, List[str]]] = None,
+    # Aliases: models sometimes guess the shorter name (matching
+    # Log_Interaction's params) instead of the "add_" prefixed ones. Accept
+    # both rather than silently doing nothing when a model uses this name.
+    materials_shared: Optional[Union[str, List[str]]] = None,
+    samples_distributed: Optional[Union[str, List[str]]] = None,
 ) -> Command:
     """Apply a fuzzy, PARTIAL update to the interaction currently shown on
     the left-hand form. Only pass the fields the user actually wants
@@ -366,7 +371,12 @@ def Edit_Interaction(
         outcomes: New outcomes text, only if changed.
         add_materials_shared: Additional material names to attach (does not remove existing ones).
         add_samples_distributed: Additional sample names to attach (does not remove existing ones).
+        materials_shared: Alias for add_materials_shared.
+        samples_distributed: Alias for add_samples_distributed.
     """
+    add_materials_shared = add_materials_shared or materials_shared
+    add_samples_distributed = add_samples_distributed or samples_distributed
+
     current = state.get("interaction_state") or {}
     interaction_id = current.get("interaction_id")
 

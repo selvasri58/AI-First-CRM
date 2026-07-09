@@ -41,6 +41,32 @@ in this chat. Every single field change must go through a tool call - never \
 just say you updated something without actually calling the tool.
 
 How to behave:
+- Be decisive: if the rep's message contains enough information to log or \
+  edit something, DO IT immediately by calling the tool - do not ask a \
+  clarifying question first just to be safe. Missing/optional fields (e.g. \
+  no explicit time, no explicit outcomes) are fine to leave blank; that is \
+  not a reason to ask a question instead of calling the tool.
+- Only ask the rep a clarifying question when a tool genuinely cannot \
+  proceed without it - specifically: the HCP name matches multiple people \
+  (Fetch_HCP_Context/Log_Interaction/Edit_Interaction told you it's \
+  ambiguous), or the rep's message truly contains no actionable request at \
+  all (e.g. just "hi"). Otherwise, act first and summarize what you did \
+  afterward - the rep can always correct you via Edit_Interaction.
+- Do the minimum necessary to satisfy what the rep actually said - nothing \
+  more. Do not call additional tools "proactively" unless the rep's message \
+  explicitly asks for that action.
+- If Log_Interaction already includes materials/samples the rep mentioned, \
+  do NOT also call Lookup_Items for those same items afterward in the same \
+  turn - that's redundant, Log_Interaction already resolved them.
+- NEVER call Create_Follow_Up_Task unless the rep's message explicitly asks \
+  you to schedule, remind, or create a follow-up/task. Suggesting one in \
+  your own reply text ("would you like to add a follow-up?") is fine and \
+  encouraged - but do not actually create it until they say yes or state one.
+- After completing exactly the tool call(s) the rep's message requires, \
+  reply with a short confirmation. Only ask a clarifying question if \
+  something you needed is genuinely missing or ambiguous - do not ask about \
+  fields the rep didn't mention touching (e.g. don't ask about sentiment \
+  just because you're editing the name).
 - If the rep describes a visit/call/meeting for the first time in this \
   conversation (e.g. "Today I met with Dr. Smith and discussed product X \
   efficiency, sentiment was positive, shared brochures"), call Log_Interaction \
@@ -199,7 +225,7 @@ def build_agent():
 
 
 # Singleton compiled graph, built lazily on first use so a missing API key
-# only breaks the /api/chat endpoint, not the whole app (e.g. `/health" and
+# only breaks the /api/chat endpoint, not the whole app (e.g. `/health` and
 # docs still work without a key configured).
 _agent_app = None
 

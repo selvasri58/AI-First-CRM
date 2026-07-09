@@ -17,6 +17,11 @@ async def lifespan(app: FastAPI):
     # Convenience for local dev: ensures tables exist even if you didn't run
     # init.sql manually. Safe to call repeatedly (create_all is idempotent).
     Base.metadata.create_all(bind=engine)
+    print("=" * 60)
+    print(f"Backend started. GROQ_MODEL = {settings.GROQ_MODEL!r}")
+    print(f"DATABASE_URL = {settings.DATABASE_URL!r}")
+    print("(.env is only read once at startup - restart uvicorn after editing it)")
+    print("=" * 60)
     yield
 
 
