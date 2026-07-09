@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hcp_crm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hcp_user
+      POSTGRES_PASSWORD: hcp_password
+      POSTGRES_DB: hcp_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - hcp_crm_pgdata:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hcp_user -d hcp_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hcp_crm_pgdata:
