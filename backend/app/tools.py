@@ -18,7 +18,7 @@ tracked by the graph itself.
 """
 
 from datetime import date as date_cls, time as time_cls
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, Union
 
 from dateutil import parser as dateutil_parser
 from langchain_core.messages import ToolMessage
@@ -52,6 +52,27 @@ def _parse_time(value: Optional[str]) -> Optional[time_cls]:
         return dateutil_parser.parse(value).time()
     except (ValueError, OverflowError):
         return None
+
+
+def _coerce_to_list(value) -> List[str]:
+    """Some smaller/faster models (e.g. llama-3.1-8b-instant) don't always
+    follow an array-typed tool parameter strictly - they sometimes send a
+    plain string like "brochures" or "brochures, samples" instead of
+    ["brochures"]. Rather than hoping every model formats this perfectly
+    (and having Groq's own server-side schema validation reject the call
+    outright with a 400 when it doesn't), we widen the accepted type to
+    Union[str, List[str]] on every such parameter and normalize here.
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if v is not None and str(v).strip()]
+    if isinstance(value, str):
+        if not value.strip():
+            return []
+        # Handle "brochures, samples" as two items, not one literal string.
+        return [part.strip() for part in value.split(",") if part.strip()]
+    return [str(value).strip()]
 
 
 def _resolve_hcp(db, hcp_name: str) -> tuple[Optional[HCPProfile], List[HCPProfile]]:
@@ -192,8 +213,8 @@ def Log_Interaction(
     topics: Optional[str] = None,
     sentiment: Optional[str] = None,
     outcomes: Optional[str] = None,
-    materials_shared: Optional[List[str]] = None,
-    samples_distributed: Optional[List[str]] = None,
+    materials_shared: Optional[Union[str, List[str]]] = None,
+    samples_distributed: Optional[Union[str, List[str]]] = None,
 ) -> Command:
     """Create a brand-new interaction record. Call this the first time the
     user describes a field visit / call / meeting with an HCP in a single
@@ -262,6 +283,9 @@ def Log_Interaction(
         db.add(interaction)
         db.flush()
 
+        materials_shared = _coerce_to_list(materials_shared)
+        samples_distributed = _coerce_to_list(samples_distributed)
+
         if materials_shared:
             _link_items_to_interaction(db, interaction.id, materials_shared, "material")
         if samples_distributed:
@@ -318,8 +342,8 @@ def Edit_Interaction(
     topics: Optional[str] = None,
     sentiment: Optional[str] = None,
     outcomes: Optional[str] = None,
-    add_materials_shared: Optional[List[str]] = None,
-    add_samples_distributed: Optional[List[str]] = None,
+    add_materials_shared: Optional[Union[str, List[str]]] = None,
+    add_samples_distributed: Optional[Union[str, List[str]]] = None,
 ) -> Command:
     """Apply a fuzzy, PARTIAL update to the interaction currently shown on
     the left-hand form. Only pass the fields the user actually wants
@@ -425,6 +449,9 @@ def Edit_Interaction(
         if outcomes:
             interaction.outcomes = outcomes
             changed_fields.append("outcomes")
+        add_materials_shared = _coerce_to_list(add_materials_shared)
+        add_samples_distributed = _coerce_to_list(add_samples_distributed)
+
         if add_materials_shared:
             _link_items_to_interaction(db, interaction.id, add_materials_shared, "material")
             changed_fields.append("materials shared")
@@ -466,7 +493,7 @@ def Edit_Interaction(
 def Lookup_Items(
     state: Annotated[AgentState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId],
-    item_names: List[str],
+    item_names: Union[str, List[str]],
     item_type: Optional[str] = None,
 ) -> Command:
     """Query the materials table to find accurate database IDs for
@@ -483,6 +510,7 @@ def Lookup_Items(
     """
     current = state.get("interaction_state") or {}
     interaction_id = current.get("interaction_id")
+    item_names = _coerce_to_list(item_names)
 
     db = get_session()
     try:
